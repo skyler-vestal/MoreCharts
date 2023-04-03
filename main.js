@@ -15,10 +15,10 @@ const orbit = new OrbitControls( camera, renderer.domElement );
 orbit.enableZoom = true;
 
 // Test cube
-const brewers = new THREE.MeshBasicMaterial( { color: 0x12284B } );
-const cardinals = new THREE.MeshBasicMaterial( { color: 0xC41E3A } );
-const cubs = new THREE.MeshBasicMaterial( { color: 0x0E3386 } );
-const tie = new THREE.MeshBasicMaterial( { color: 0xFFFF00 } );
+const brewers = new THREE.MeshBasicMaterial( { color: 0x12284B, side: THREE.DoubleSide } );
+const cardinals = new THREE.MeshBasicMaterial( { color: 0xC41E3A, side: THREE.DoubleSide } );
+const cubs = new THREE.MeshBasicMaterial( { color: 0x0E3386, side: THREE.DoubleSide } );
+const tie = new THREE.MeshBasicMaterial( { color: 0xFFFF00, side: THREE.DoubleSide } );
 var outline = new THREE.LineBasicMaterial( { color: 0xFFFFFF } );
 const mats = [brewers, cardinals, cubs];
 
@@ -38,7 +38,7 @@ let records = {
         l: 2
     },
 }
-const GAMES = 50;
+const GAMES = 15;
 const gui = new GUI();
 const brewFolder = gui.addFolder('Brewers');
 brewFolder.add(records.brewers, 'w', 0, GAMES).step(1).name("Wins").onChange(makeFaces);
@@ -90,38 +90,39 @@ function makeFaces() {
     const CARD_MAX = CARD_GAMES + records.cardinals.w;
     const CUB_MAX = CUB_GAMES + records.cubs.w;
     // Card and Brewers
-    for (let brew_wins = records.brewers.w; brew_wins < BREW_MAX; brew_wins++) {
-        for (let card_wins = records.cardinals.w; card_wins < CARD_MAX; card_wins++) {
+    for (let brew_wins = records.brewers.w; brew_wins <= BREW_MAX; brew_wins++) {
+        for (let card_wins = records.cardinals.w; card_wins <= CARD_MAX; card_wins++) {
             let face_min = makeFace(brew_wins, card_wins, records.cubs.w);
             face_min.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI);
             scene.add(face_min);
             let face_max = makeFace(brew_wins, card_wins, CUB_MAX);
             scene.add(face_max);
+            fixFace(face_max, 0, 0, 1);
         }
     }
     // Brewers and Cubs
-    for (let brew_wins = records.brewers.w; brew_wins < BREW_MAX; brew_wins++) {
-        for (let cub_wins = records.cubs.w; cub_wins < CUB_MAX; cub_wins++) {
+    for (let brew_wins = records.brewers.w; brew_wins <= BREW_MAX; brew_wins++) {
+        for (let cub_wins = records.cubs.w; cub_wins <= CUB_MAX; cub_wins++) {
             let face_min = makeFace(brew_wins, records.cardinals.w, cub_wins);
             face_min.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
             fixFace(face_min, 0, .5, .5);
             scene.add(face_min);
             let face_max = makeFace(brew_wins, CARD_MAX, cub_wins);
             face_max.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
-            fixFace(face_max, 0, -.5, -.5);
+            fixFace(face_max, 0, -.5, .5);
             scene.add(face_max);
         }
     }
     // Card and Cubs
-    for (let cub_wins = records.cubs.w; cub_wins < CUB_MAX; cub_wins++) {
-        for (let card_wins = records.cardinals.w; card_wins < CARD_MAX; card_wins++) {
+    for (let cub_wins = records.cubs.w; cub_wins <= CUB_MAX; cub_wins++) {
+        for (let card_wins = records.cardinals.w; card_wins <= CARD_MAX; card_wins++) {
             let face_min = makeFace(records.brewers.w, card_wins, cub_wins);
             face_min.rotateOnAxis(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
             fixFace(face_min, .5, 0, .5);
             scene.add(face_min);
             let face_max = makeFace(BREW_MAX, card_wins, cub_wins);
             face_max.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-            fixFace(face_max, -.5, 0, -.5);
+            fixFace(face_max, -.5, 0, .5);
             scene.add(face_max);
         }
     }
