@@ -38,7 +38,7 @@ let records = {
         l: 2
     },
 }
-const GAMES = 30;
+const GAMES = 50;
 const gui = new GUI();
 const brewFolder = gui.addFolder('Brewers');
 brewFolder.add(records.brewers, 'w', 0, GAMES).step(1).name("Wins").onChange(makeFaces);
