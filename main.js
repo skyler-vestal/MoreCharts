@@ -15,7 +15,6 @@ const orbit = new OrbitControls( camera, renderer.domElement );
 orbit.enableZoom = true;
 
 // Test cube
-const geometry = new THREE.BoxGeometry( 1, 1, 1 );
 const brewers = new THREE.MeshBasicMaterial( { color: 0x12284B } );
 const cardinals = new THREE.MeshBasicMaterial( { color: 0xC41E3A } );
 const cubs = new THREE.MeshBasicMaterial( { color: 0x0E3386 } );
@@ -39,17 +38,17 @@ let records = {
         l: 2
     },
 }
-const GAMES = 10;
+const GAMES = 30;
 const gui = new GUI();
 const brewFolder = gui.addFolder('Brewers');
-brewFolder.add(records.brewers, 'w', 0, GAMES).step(1).name("Wins").onFinishChange(makeFaces);
-brewFolder.add(records.brewers, 'l', 0, GAMES).step(1).name("Losses").onFinishChange(makeFaces);
+brewFolder.add(records.brewers, 'w', 0, GAMES).step(1).name("Wins").onChange(makeFaces);
+brewFolder.add(records.brewers, 'l', 0, GAMES).step(1).name("Losses").onChange(makeFaces);
 const cardFolder = gui.addFolder('Cardinals');
-cardFolder.add(records.cardinals, 'w', 0, GAMES).step(1).name("Wins").onFinishChange(makeFaces);
-cardFolder.add(records.cardinals, 'l', 0, GAMES).step(1).name("Losses").onFinishChange(makeFaces);
+cardFolder.add(records.cardinals, 'w', 0, GAMES).step(1).name("Wins").onChange(makeFaces);
+cardFolder.add(records.cardinals, 'l', 0, GAMES).step(1).name("Losses").onChange(makeFaces);
 const cubFolder = gui.addFolder('Cubs');
-cubFolder.add(records.cubs, 'w', 0, GAMES).step(1).name("Wins").onFinishChange(makeFaces);
-cubFolder.add(records.cubs, 'l', 0, GAMES).step(1).name("Losses").onFinishChange(makeFaces);
+cubFolder.add(records.cubs, 'w', 0, GAMES).step(1).name("Wins").onChange(makeFaces);
+cubFolder.add(records.cubs, 'l', 0, GAMES).step(1).name("Losses").onChange(makeFaces);
 
 function retMaterial(wins) {
     let max_wins = Math.max(...wins);
@@ -59,30 +58,71 @@ function retMaterial(wins) {
 
 function purgeMeshes() {
     for (let i = scene.children.length - 1; i >= 0; i--) {
-        if(scene.children[i].type === "Mesh")
+        if (scene.children[i].type === "Mesh")
             scene.remove(scene.children[i]);
     }   
 }
 
+function makeFace(brew_wins, card_wins, cub_wins) {
+    let face = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), retMaterial([brew_wins, card_wins, cub_wins]));
+    face.translateX(brew_wins);
+    face.translateY(card_wins);
+    face.translateZ(cub_wins);
+    // var geo = new THREE.EdgesGeometry( face.geometry );
+    // var wireframe = new THREE.LineSegments( geo, outline );
+    // face.add(wireframe);
+    return face;
+}
+
+function fixFace(face, x, y, z) {
+    face.translateX(x);
+    face.translateY(y);
+    face.translateZ(z);
+}
+
 function makeFaces() {
     purgeMeshes();
-    const BREW_GAMES = GAMES - records.brewers.l;
-    const CARD_GAMES = GAMES - records.cardinals.l;
-    const CUB_GAMES = GAMES - records.cubs.l;
-    // Cube logic
-    for (let brew_wins = records.brewers.w; brew_wins < BREW_GAMES; brew_wins++) {
-        for (let card_wins = records.cardinals.w; card_wins < CARD_GAMES; card_wins++) {
-            for (let cub_wins = records.cubs.w; cub_wins < CUB_GAMES; cub_wins++) {
-                let face = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), retMaterial([brew_wins, card_wins, cub_wins]));
-                face.translateX(brew_wins);
-                face.translateY(card_wins);
-                face.translateZ(cub_wins);
-                scene.add(face);
-    
-                var geo = new THREE.EdgesGeometry( face.geometry );
-                var wireframe = new THREE.LineSegments( geo, outline );
-                face.add(wireframe);
-            }
+    const BREW_GAMES = GAMES - (records.brewers.w + records.brewers.l);
+    const CARD_GAMES = GAMES - (records.cardinals.w + records.cardinals.l);
+    const CUB_GAMES = GAMES - (records.cubs.w + records.cubs.l);
+
+    const BREW_MAX = BREW_GAMES + records.brewers.w;
+    const CARD_MAX = CARD_GAMES + records.cardinals.w;
+    const CUB_MAX = CUB_GAMES + records.cubs.w;
+    // Card and Brewers
+    for (let brew_wins = records.brewers.w; brew_wins < BREW_MAX; brew_wins++) {
+        for (let card_wins = records.cardinals.w; card_wins < CARD_MAX; card_wins++) {
+            let face_min = makeFace(brew_wins, card_wins, records.cubs.w);
+            face_min.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI);
+            scene.add(face_min);
+            let face_max = makeFace(brew_wins, card_wins, CUB_MAX);
+            scene.add(face_max);
+        }
+    }
+    // Brewers and Cubs
+    for (let brew_wins = records.brewers.w; brew_wins < BREW_MAX; brew_wins++) {
+        for (let cub_wins = records.cubs.w; cub_wins < CUB_MAX; cub_wins++) {
+            let face_min = makeFace(brew_wins, records.cardinals.w, cub_wins);
+            face_min.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
+            fixFace(face_min, 0, .5, .5);
+            scene.add(face_min);
+            let face_max = makeFace(brew_wins, CARD_MAX, cub_wins);
+            face_max.rotateOnAxis(new THREE.Vector3(1, 0, 0), -Math.PI / 2);
+            fixFace(face_max, 0, -.5, -.5);
+            scene.add(face_max);
+        }
+    }
+    // Card and Cubs
+    for (let cub_wins = records.cubs.w; cub_wins < CUB_MAX; cub_wins++) {
+        for (let card_wins = records.cardinals.w; card_wins < CARD_MAX; card_wins++) {
+            let face_min = makeFace(records.brewers.w, card_wins, cub_wins);
+            face_min.rotateOnAxis(new THREE.Vector3(0, 1, 0), -Math.PI / 2);
+            fixFace(face_min, .5, 0, .5);
+            scene.add(face_min);
+            let face_max = makeFace(BREW_MAX, card_wins, cub_wins);
+            face_max.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+            fixFace(face_max, -.5, 0, -.5);
+            scene.add(face_max);
         }
     }
 }
@@ -90,9 +130,9 @@ function makeFaces() {
 makeFaces();
 
 
-camera.position.x = 10;
-camera.position.y = 10;
-camera.position.z = 10;
+camera.position.x = -(GAMES + 5);
+camera.position.y = -(GAMES + 5);
+camera.position.z = -(GAMES + 5);
 
 // Point lights
 const light = new THREE.PointLight( 0xff0000, 5 );
